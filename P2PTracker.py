@@ -11,13 +11,13 @@ port_num = 5100
 host = '127.0.0.1'
 
 def start_server():
-    server_socket = socket.socket()
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((host, port_num))
-
+    server_socket.listen()
     while True:
-        server_socket.listen()
         client_socket, addr = server_socket.accept()
-        t = threading.Thread(target=process_client_requests, args=(client_socket))
+        t = threading.Thread(target=process_client_requests, args=(client_socket,))
         t.start()
 
 #Processing each client request
@@ -63,11 +63,13 @@ def find_chunks(client_socket, text):
         for ip_addr, port in peers:
             response += ","
             response += str(ip_addr)
+            response += ","
             response += str(port)
 
     else:
         response = "CHUNK_LOCATION_UNKNOWN," + str(chunk_index)
-    send_to_client(client_socket, response)
+    #send_to_client(client_socket, response)
+    client_socket.sendall(response.encode())
     time.sleep(1)
     lock.release()
 
