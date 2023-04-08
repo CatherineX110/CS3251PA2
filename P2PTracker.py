@@ -1,6 +1,12 @@
 import socket
 import threading
 import time
+import logging
+
+#logging
+logging.basicConfig(filename="logs.log", format="%(message)s", filemode="a")
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 #Global Variables
 #check_list = {file_hash: {file_hash: [(ip, port)...]}}
 check_list = {}
@@ -41,19 +47,6 @@ def process_chunks(client_socket, text):
     chunk_index = int (chunk_index)
 
     lock.acquire()
-    #replication fonud
-    if file_hash in check_list:
-        first_ip, first_port = check_list[file_hash]
-        if chunk_index not in chunk_list:
-            chunk_list[chunk_index] = (file_hash, [(first_ip, first_port), (ip_addr, port)])
-        else:
-            chunk_list[chunk_index][1].append((ip_addr, port))
-
-    else:
-        check_list[file_hash] = (ip_addr, port)
-    lock.release()
-
-'''
     if chunk_index not in check_list:
         check_list[chunk_index] = {}
     if file_hash not in check_list[chunk_index]:
@@ -61,9 +54,10 @@ def process_chunks(client_socket, text):
     
     check_list[chunk_index][file_hash].append((ip_addr, port))
     if len(check_list[chunk_index][file_hash]) >= 2:
-        chunk_list[chunk_index] = (file_hash, check_list[chunk_index][file_hash])
-'''
-
+        #if first time agreement or (same chunk and same file_hash)
+        if (chunk_index in chunk_list and file_hash == chunk_list[chunk_index][0]) or (chunk_index not in chunk_list):
+            chunk_list[chunk_index] = (file_hash, check_list[chunk_index][file_hash])
+    lock.release()
 
 #Find if target chunk exists in chunk_list
 def find_chunks(client_socket, text):
@@ -82,14 +76,11 @@ def find_chunks(client_socket, text):
 
     else:
         response = "CHUNK_LOCATION_UNKNOWN," + str(chunk_index)
-    #send_to_client(client_socket, response)
+    logger.info("P2PTracker," + response)
     lock.release()
     client_socket.sendall(response.encode())
     time.sleep(1)
 
-def send_to_client(client_socket, response):
-    response = response.ljust(1024, " ")
-    client_socket.sendall(response.encode())
 
 if __name__ == "__main__":
     start_server()
