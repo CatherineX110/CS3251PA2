@@ -2,9 +2,9 @@ import socket
 import threading
 import time
 #Global Variables
-#check_list = {chunk_index: {file_hash: [(ip, port)...]}}
+#check_list = {file_hash: {file_hash: [(ip, port)...]}}
 check_list = {}
-#chunk_list = {chun_index: (file_hash, [(ip,port)...])}
+#chunk_list = {chunk_index: (file_hash, [(ip,port)...])}
 chunk_list = {}
 lock = threading.Lock()
 port_num = 5100
@@ -41,6 +41,19 @@ def process_chunks(client_socket, text):
     chunk_index = int (chunk_index)
 
     lock.acquire()
+    #replication fonud
+    if file_hash in check_list:
+        first_ip, first_port = check_list[file_hash]
+        if chunk_index not in chunk_list:
+            chunk_list[chunk_index] = (file_hash, [(first_ip, first_port), (ip_addr, port)])
+        else:
+            chunk_list[chunk_index][1].append((ip_addr, port))
+
+    else:
+        check_list[file_hash] = (ip_addr, port)
+    lock.release()
+
+'''
     if chunk_index not in check_list:
         check_list[chunk_index] = {}
     if file_hash not in check_list[chunk_index]:
@@ -49,7 +62,8 @@ def process_chunks(client_socket, text):
     check_list[chunk_index][file_hash].append((ip_addr, port))
     if len(check_list[chunk_index][file_hash]) >= 2:
         chunk_list[chunk_index] = (file_hash, check_list[chunk_index][file_hash])
-    lock.release()
+'''
+
 
 #Find if target chunk exists in chunk_list
 def find_chunks(client_socket, text):
