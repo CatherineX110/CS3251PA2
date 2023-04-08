@@ -37,7 +37,7 @@ def process_client_requests(client_socket):
 
 #Process local chunks, adding to check_list and chunk_list for corresponding chunks
 def process_chunks(client_socket, text):
-    requst_type, chunk_index, file_hash, ip_addr, port = text.split(',')
+    request_type, chunk_index, file_hash, ip_addr, port = text.split(',')
     chunk_index = int (chunk_index)
 
     lock.acquire()
@@ -69,9 +69,9 @@ def find_chunks(client_socket, text):
     else:
         response = "CHUNK_LOCATION_UNKNOWN," + str(chunk_index)
     #send_to_client(client_socket, response)
+    lock.release()
     client_socket.sendall(response.encode())
     time.sleep(1)
-    lock.release()
 
 def send_to_client(client_socket, response):
     response = response.ljust(1024, " ")
