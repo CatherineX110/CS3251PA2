@@ -32,7 +32,7 @@ def process_client_requests(client_socket):
         data = client_socket.recv(1024)
         if not data:
             break
-
+        #divide into two cases
         text = data.decode().strip()
         if text.startswith("LOCAL_CHUNKS"):
             process_chunks(client_socket, text)
