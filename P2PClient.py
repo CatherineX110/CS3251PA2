@@ -40,21 +40,42 @@ def send_chunks_to_tracker():
 		hash = hash_whole_file(filename)
 		request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + str(socket.gethostbyname(socket.gethostname)) + "," + str(transfer_port) + "\n"
 		client_socket.sendall(request.encode())
+		time.sleep(0.005)
 		logger.info(entity_name + "," + request)
 	
+def update_tracker(chunk_index, filename):
+	hash = hash_whole_file(filename)
+	client_socket = socket.socket()
+	client_socket.connect((tracker_ip, tracker_port))
+	request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + str(socket.gethostbyname(socket.gethostname)) + "," + str(transfer_port) + "\n"
+	client_socket.sendall(request.encode())
+	time.sleep(0.005)
+	logger.info(entity_name + "," + request)
+
 def request_info_from_tracker(chunk_index):
 	client_socket = socket.socket()
 	client_socket.connect((tracker_ip, tracker_port))
 	request = "WHERE_CHUNK," + str(chunk_index) + "\n"
-	logger.info(entity_name + "," + request)
 	client_socket.sendall(request.encode())
+	time.sleep(0.005)
+	logger.info(entity_name + "," + request)
 	response = client_socket.recv(1024).decode().strip()
 	return response
 
 def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
 	peer_socket = socket.socket()
 	peer_socket.connect((peer_ip, peer_port))
-	request = "REQUEST_CHUNK," + str(chunk_index)
+	request = "REQUEST_CHUNK," + str(chunk_index) + "\n"
+	peer_socket.sendall(request)
+	time.sleep(0.005)
+	logger.info(entity_name + "," + request)
+	with open(os.path.join(folder_path, filename), 'wb') as file:
+		while True:
+			response = peer_socket.recv(1024)
+			if not response:
+				break
+			file.write(response)
+			
 
 def read_file_by_lines():
 	with open(os.path.join(folder_path, 'local_chunks.txt'), 'r') as file:
