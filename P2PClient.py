@@ -46,7 +46,7 @@ def send_chunks_to_tracker():
         lock.acquire()
         hash = hash_whole_file(filename)
         lock.release()
-        request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + tracker_ip + "," + str(transfer_port) + "\n"
+        request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + tracker_ip + "," + str(transfer_port)
         client_socket.sendall(request.encode())
         time.sleep(0.005)
         lock.acquire()
@@ -59,7 +59,7 @@ def update_tracker(chunk_index, filename):
     lock.release()
     client_socket = socket.socket()
     client_socket.connect((tracker_ip, tracker_port))
-    request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + str(socket.gethostbyname(socket.gethostname)) + "," + str(transfer_port) + "\n"
+    request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + tracker_ip + "," + str(transfer_port)
     client_socket.sendall(request.encode())
     time.sleep(0.005)
     lock.acquire()
@@ -69,7 +69,7 @@ def update_tracker(chunk_index, filename):
 def request_info_from_tracker(chunk_index):
     client_socket = socket.socket()
     client_socket.connect((tracker_ip, tracker_port))
-    request = "WHERE_CHUNK," + str(chunk_index) + "\n"
+    request = "WHERE_CHUNK," + str(chunk_index)
     client_socket.sendall(request.encode())
     time.sleep(0.005)
     lock.acquire()
@@ -80,8 +80,9 @@ def request_info_from_tracker(chunk_index):
 
 def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
     peer_socket = socket.socket()
+    print (peer_ip + " ip and port " + str(peer_port))
     peer_socket.connect((peer_ip, peer_port))
-    request = "REQUEST_CHUNK," + str(chunk_index) + "\n"
+    request = "REQUEST_CHUNK," + str(chunk_index)
     peer_socket.sendall(request.encode())
     time.sleep(0.005)
     lock.acquire()
@@ -90,13 +91,16 @@ def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
         while True:
             response = peer_socket.recv(1024)
             if not response:
+                file.close()
                 break
             file.write(response)
+            print("I should stop")
+        file.close()
     lock.release()
     
 def process_peer(peer_socket):
     while True:
-        request = peer_socket.recv(1024).decode().strip()
+        request = peer_socket.recv(1024).decode()
         if not request:
             break
         if request.startswith("REQUEST_CHUNK"):
@@ -106,14 +110,16 @@ def process_peer(peer_socket):
             with open(os.path.join(folder_path, 'local_chunks.txt'),'r') as file:
                 for line in file:
                     line = line.strip()
-                    if line.startswith(chunk_index):
+                    if line.startswith(chunk_index) and not line.endswith("LASTCHUNK"):
                         ind, filename = line.split(',')
                         break
+            file.close()
             if filename:
                 with open(os.path.join(folder_path, filename), 'rb') as file:
                     while True:
                         chunk = file.read(1024)
                         if not chunk:
+                            file.close()
                             break
                         peer_socket.sendall(chunk)
                         time.sleep(0.005)
@@ -122,14 +128,15 @@ def process_peer(peer_socket):
         
 #read local chunks file only
 def read_file_by_lines():
-    print(folder_path + "hahahahahahha")
     with open(os.path.join(folder_path, 'local_chunks.txt'), 'r') as file:
         lines = file.readlines()
+    file.close()
     return lines
 
 def hash_whole_file(filename):
     with open(os.path.join(folder_path, filename), 'rb') as file:
         data = file.read()
+    file.close()
     return hashlib.sha1(data).hexdigest()
 
 def accepting_peers():
@@ -138,31 +145,36 @@ def accepting_peers():
     client_socket.listen()
     while True:
         peer_socket, addr = client_socket.accept()
-        t = threading.Thread(target=process_peer, args=(peer_socket))
+        t = threading.Thread(target=process_peer, args=(peer_socket,))
         t.start()
         
 def find_missing_chunks():
     total_chunk = send_chunks_to_tracker()
     for i in range(total_chunk):
         missing_chunks.append((i+1))
-    print(total_chunk)
-    print(missing_chunks)
     lines = read_file_by_lines()
     for line in lines:
         chunInd, fileName = line.split(',')
-        print(chunInd)
+        if (fileName == "LASTCHUNK"):
+            break
         missing_chunks.remove(int(chunInd))
+    print ("hi there " + str(len(missing_chunks)))
     while len(missing_chunks) > 0:
+        print ("Im in here!")
         ind = missing_chunks.pop()
         response = request_info_from_tracker(ind).split(',')
+        print ('ha?')
         if (response[0] != 'CHUNK_LOCATION_UNKNOWN'):
             useful_peers = response[3:]
+            print (useful_peers)
             peer_rand =  random.randint(0, (len(useful_peers)/2 - 1))
             peer_rand = 2 * peer_rand
-            peer_ip = response[peer_rand]
-            peer_port = response[peer_rand+1]
-            request_chunks_from_peer(peer_ip, peer_port, ind, ('chunkNo_' + str(ind)))
-            update_tracker(ind)
+            peer_ip = useful_peers[peer_rand]
+            peer_port = int(useful_peers[peer_rand+1])
+            print("randin is " + str(peer_rand) + " and the port number is " + response[peer_rand+1])
+            new_file_name = 'chunkNo_' + str(ind)
+            request_chunks_from_peer(peer_ip, peer_port, ind, new_file_name)
+            update_tracker(ind, new_file_name)
         else:
             missing_chunks.insert(0, ind)
 
@@ -173,7 +185,6 @@ if __name__ == "__main__":
     folder_path = tempF
     transfer_port = tempTP
     entity_name = tempN
-    send_chunks_to_tracker()
     t = threading.Thread(target=accepting_peers)
     t.start()
     find_missing_chunks()

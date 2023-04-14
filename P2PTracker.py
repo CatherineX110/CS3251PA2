@@ -35,15 +35,16 @@ def process_client_requests(client_socket):
         #divide into two cases
         text = data.decode().strip()
         if text.startswith("LOCAL_CHUNKS"):
-            process_chunks(client_socket, text)
+            process_chunks(text)
         if text.startswith("WHERE_CHUNK"):
             find_chunks(client_socket, text)
 
     client_socket.close()
 
 #Process local chunks, adding to check_list and chunk_list for corresponding chunks
-def process_chunks(client_socket, text):
+def process_chunks(text):
     request_type, chunk_index, file_hash, ip_addr, port = text.split(',')
+    print ("client send me a " + request_type + " for chunk no. " + chunk_index + "with hash" + file_hash)
     chunk_index = int (chunk_index)
 
     lock.acquire()
