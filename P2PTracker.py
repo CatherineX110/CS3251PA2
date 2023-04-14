@@ -33,7 +33,7 @@ def process_client_requests(client_socket):
         if not data:
             break
         #divide into two cases
-        text = data.decode().strip()
+        text = data.decode()
         if text.startswith("LOCAL_CHUNKS"):
             process_chunks(text)
         if text.startswith("WHERE_CHUNK"):
@@ -43,6 +43,7 @@ def process_client_requests(client_socket):
 
 #Process local chunks, adding to check_list and chunk_list for corresponding chunks
 def process_chunks(text):
+    print ("hahahha " + text + " hahahahaha")
     request_type, chunk_index, file_hash, ip_addr, port = text.split(',')
     print ("client send me a " + request_type + " for chunk no. " + chunk_index + "with hash" + file_hash)
     chunk_index = int (chunk_index)

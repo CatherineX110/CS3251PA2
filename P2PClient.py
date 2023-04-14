@@ -45,8 +45,10 @@ def send_chunks_to_tracker(tracker_socket):
         hash = hash_whole_file(filename)
         lock.release()
         request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + "localhost" + "," + str(transfer_port)
+        lock.acquire()
         tracker_socket.sendall(request.encode())
-        time.sleep(0.005)
+        time.sleep(1)
+        lock.release()
         lock.acquire()
         logger.info(entity_name + "," + request)
         lock.release()
@@ -55,21 +57,26 @@ def update_tracker(chunk_index, filename, tracker_socket):
     lock.acquire()
     hash = hash_whole_file(filename)
     lock.release()
+    lock.acquire()
     request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + "localhost" + "," + str(transfer_port)
     tracker_socket.sendall(request.encode())
-    time.sleep(0.005)
+    time.sleep(1)
+    lock.release()
     lock.acquire()
     logger.info(entity_name + "," + request)
     lock.release()
     
 def request_info_from_tracker(chunk_index, tracker_socket):
     request = "WHERE_CHUNK," + str(chunk_index)
+    lock.acquire()
+    print (request + "hahahahah")
     tracker_socket.sendall(request.encode())
-    time.sleep(0.005)
+    time.sleep(1)
+    lock.release()
     lock.acquire()
     logger.info(entity_name + "," + request)
     lock.release()
-    response = tracker_socket.recv(1024).decode().strip()
+    response = tracker_socket.recv(1024).decode()
     return response
 
 def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
@@ -77,8 +84,10 @@ def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
     print (peer_ip + " ip and port " + str(peer_port))
     peer_socket.connect((peer_ip, peer_port))
     request = "REQUEST_CHUNK," + str(chunk_index)
+    lock.acquire()
     peer_socket.sendall(request.encode())
-    time.sleep(0.005)
+    time.sleep(1)
+    lock.release()
     lock.acquire()
     logger.info(entity_name + "," + request + "," + peer_ip + "," + str(peer_port))
     with open(os.path.join(folder_path, filename), 'wb') as file:
@@ -117,7 +126,7 @@ def process_peer(peer_socket):
                             file.close()
                             break
                         peer_socket.sendall(chunk)
-                        time.sleep(0.005)
+                        time.sleep(1)
             lock.release()
             break
     peer_socket.close()
@@ -161,6 +170,7 @@ def find_missing_chunks():
         ind = missing_chunks.pop()
         response = request_info_from_tracker(ind, tracker_socket).split(',')
         print ('ha?')
+        print(response)
         if (response[0] != 'CHUNK_LOCATION_UNKNOWN'):
             useful_peers = response[3:]
             print (useful_peers)
@@ -174,7 +184,7 @@ def find_missing_chunks():
             update_tracker(ind, new_file_name, tracker_socket)
         else:
             missing_chunks.insert(0, ind)
-    
+    tracker_socket.close()
 
 
 
