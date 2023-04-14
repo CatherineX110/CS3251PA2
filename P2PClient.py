@@ -94,7 +94,7 @@ def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
                 file.close()
                 break
             file.write(response)
-            print("I should stop")
+            file.flush()
         file.close()
     lock.release()
     
