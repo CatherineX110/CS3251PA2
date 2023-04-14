@@ -46,12 +46,13 @@ def send_chunks_to_tracker():
         lock.acquire()
         hash = hash_whole_file(filename)
         lock.release()
-        request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + tracker_ip + "," + str(transfer_port)
+        request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + "localhost" + "," + str(transfer_port)
         client_socket.sendall(request.encode())
         time.sleep(0.005)
         lock.acquire()
         logger.info(entity_name + "," + request)
         lock.release()
+    client_socket.close()
 	
 def update_tracker(chunk_index, filename):
     lock.acquire()
@@ -59,13 +60,14 @@ def update_tracker(chunk_index, filename):
     lock.release()
     client_socket = socket.socket()
     client_socket.connect((tracker_ip, tracker_port))
-    request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + tracker_ip + "," + str(transfer_port)
+    request = "LOCAL_CHUNKS," + str(chunk_index) + "," + hash + "," + "localhost" + "," + str(transfer_port)
     client_socket.sendall(request.encode())
     time.sleep(0.005)
     lock.acquire()
     logger.info(entity_name + "," + request)
     lock.release()
-
+    client_socket.close()
+    
 def request_info_from_tracker(chunk_index):
     client_socket = socket.socket()
     client_socket.connect((tracker_ip, tracker_port))
@@ -76,6 +78,7 @@ def request_info_from_tracker(chunk_index):
     logger.info(entity_name + "," + request)
     lock.release()
     response = client_socket.recv(1024).decode().strip()
+    client_socket.close()
     return response
 
 def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
@@ -86,7 +89,7 @@ def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
     peer_socket.sendall(request.encode())
     time.sleep(0.005)
     lock.acquire()
-    logger.info(entity_name + "," + request)
+    logger.info(entity_name + "," + request + "," + peer_ip + "," + str(peer_port))
     with open(os.path.join(folder_path, filename), 'wb') as file:
         while True:
             response = peer_socket.recv(1024)
@@ -97,6 +100,7 @@ def request_chunks_from_peer(peer_ip, peer_port, chunk_index, filename):
             file.flush()
         file.close()
     lock.release()
+    peer_socket.close()
     
 def process_peer(peer_socket):
     while True:
@@ -124,6 +128,7 @@ def process_peer(peer_socket):
                         peer_socket.sendall(chunk)
                         time.sleep(0.005)
             lock.release()
+            break
     peer_socket.close()
         
 #read local chunks file only
@@ -141,7 +146,7 @@ def hash_whole_file(filename):
 
 def accepting_peers():
     client_socket = socket.socket()
-    client_socket.bind(('127.0.0.1',transfer_port))
+    client_socket.bind(("localhost",transfer_port))
     client_socket.listen()
     while True:
         peer_socket, addr = client_socket.accept()
