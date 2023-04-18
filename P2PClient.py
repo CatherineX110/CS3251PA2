@@ -160,7 +160,7 @@ def find_missing_chunks():
 
     while len(missing_chunks) > 0:
         print ("Im in here!")
-        ind = missing_chunks.pop()
+        ind = missing_chunks.pop(0)
         response = request_info_from_tracker(ind, tracker_socket).split(',')
         print ('ha?')
         print(response)
@@ -172,11 +172,11 @@ def find_missing_chunks():
             peer_ip = useful_peers[peer_rand]
             peer_port = int(useful_peers[peer_rand+1])
             print("randin is " + str(peer_rand) + " and the port number is " + response[peer_rand+1])
-            new_file_name = 'chunkNo_' + str(ind)
+            new_file_name = 'chunk_' + str(ind)
             request_chunks_from_peer(peer_ip, peer_port, ind, new_file_name)
             update_tracker(ind, new_file_name, tracker_socket)
         else:
-            missing_chunks.insert(0, ind)
+            missing_chunks.append(ind)
     tracker_socket.close()
 
 
